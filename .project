@@ -1,0 +1,108 @@
+provider "aws" {
+  region     = "us-west-2"
+  access_key = ""
+  secret_key = ""
+}
+resource "aws_vpc" "ashish" {
+  cidr_block       = "10.0.0.0/16"
+  instance_tenancy = "default"
+
+  tags = {
+    Name = "ashishvpc"
+  }
+}
+
+resource "aws_subnet" "public" {
+  vpc_id     = aws_vpc.ashish.id  # Corrected VPC ID reference
+  cidr_block = "10.0.1.0/24"
+
+  tags = {
+    Name = "public"
+  }
+}
+
+resource "aws_subnet" "private" {
+  vpc_id     = aws_vpc.ashish.id  # Corrected VPC ID reference
+  cidr_block = "10.0.2.0/24"      # Changed CIDR block to be unique
+
+  tags = {
+    Name = "private"
+  }
+}
+resource "aws_security_group" "ASH" {
+  name        = "ASH"
+  description = "Allow TLS inbound traffic"
+  vpc_id      = aws_vpc.ashish.id
+
+  ingress {
+    description = "TLS from VPC"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "ashishsg"
+  }
+}
+
+
+
+resource "aws_internet_gateway" "igw" {
+  vpc_id = aws_vpc.ashish.id
+
+  tags = {
+    Name = "ashish"
+  }
+}
+
+
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.ashish.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.igw.id
+  }
+
+
+  tags = {
+    Name = "public"
+  }
+}
+
+
+resource "aws_route_table_association" "publicaso" {
+  subnet_id      = aws_subnet.public.id
+  route_table_id = aws_route_table.public.id
+}
+
+
+
+
+resource "aws_instance" "ashish_instance" {
+  ami           = "ami-01572eda7c4411960"
+  instance_type = "t2.micro"
+  subnet_id     = aws_subnet.public.id
+  vpc_security_group_ids = [aws_security_group.ASH.id]
+  tags = {
+    Name = "ashishkhopade"
+  }
+}
+
+
+resource "aws_eip" "kho" {
+  instance = aws_instance.ashish_instance.id
+  domain   = "vpc"
+}
+
+
+
